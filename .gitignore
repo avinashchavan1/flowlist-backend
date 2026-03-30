@@ -1,0 +1,15 @@
+# Environment — never commit real secrets
+.env
+
+# Build output
+build/
+target/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store

@@ -4,7 +4,7 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.flowlist'
+group = 'com.drift'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -33,6 +33,9 @@ dependencies {
 
     // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // JSON (for Resend API payload serialisation)
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'

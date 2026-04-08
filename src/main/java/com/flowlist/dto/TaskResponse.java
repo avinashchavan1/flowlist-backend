@@ -8,6 +8,7 @@ public class TaskResponse {
     private String title;
     private Instant dueDate;
     private String category;
+    private String priority;
     private boolean completed;
     private Instant completedAt;
     private Instant createdAt;
@@ -19,6 +20,7 @@ public class TaskResponse {
         r.title       = t.getTitle();
         r.dueDate     = t.getDueDate();
         r.category    = t.getCategory();
+        r.priority    = t.getPriority();
         r.completed   = t.isCompleted();
         r.completedAt = t.getCompletedAt();
         r.createdAt   = t.getCreatedAt();
@@ -30,6 +32,7 @@ public class TaskResponse {
     public String getTitle()        { return title; }
     public Instant getDueDate()     { return dueDate; }
     public String getCategory()     { return category; }
+    public String getPriority()     { return priority; }
     public boolean isCompleted()    { return completed; }
     public Instant getCompletedAt() { return completedAt; }
     public Instant getCreatedAt()   { return createdAt; }

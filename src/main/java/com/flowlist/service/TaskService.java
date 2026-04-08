@@ -38,6 +38,7 @@ public class TaskService {
                 .title(req.getTitle().trim())
                 .dueDate(req.getDueDate())
                 .category(req.getCategory())
+                .priority(req.getPriority())
                 .completed(false)
                 .build();
         return TaskResponse.from(taskRepository.save(task));
@@ -49,6 +50,7 @@ public class TaskService {
         task.setTitle(req.getTitle().trim());
         task.setDueDate(req.getDueDate());
         task.setCategory(req.getCategory());
+        task.setPriority(req.getPriority());
         return TaskResponse.from(taskRepository.save(task));
     }
 

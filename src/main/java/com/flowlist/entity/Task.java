@@ -28,6 +28,9 @@ public class Task {
     @Column(length = 100)
     private String category;
 
+    @Column(length = 20)
+    private String priority;
+
     @Column(nullable = false)
     private boolean completed = false;
 
@@ -53,6 +56,7 @@ public class Task {
     public String getTitle()        { return title; }
     public Instant getDueDate()     { return dueDate; }
     public String getCategory()     { return category; }
+    public String getPriority()     { return priority; }
     public boolean isCompleted()    { return completed; }
     public Instant getCompletedAt() { return completedAt; }
     public Instant getCreatedAt()   { return createdAt; }
@@ -63,6 +67,7 @@ public class Task {
     public void setTitle(String title)         { this.title = title; }
     public void setDueDate(Instant d)          { this.dueDate = d; }
     public void setCategory(String c)          { this.category = c; }
+    public void setPriority(String p)          { this.priority = p; }
     public void setCompleted(boolean b)        { this.completed = b; }
     public void setCompletedAt(Instant t)      { this.completedAt = t; }
 
@@ -75,6 +80,7 @@ public class Task {
         public Builder title(String v)      { t.title = v;     return this; }
         public Builder dueDate(Instant v)   { t.dueDate = v;   return this; }
         public Builder category(String v)   { t.category = v;  return this; }
+        public Builder priority(String v)   { t.priority = v;  return this; }
         public Builder completed(boolean v) { t.completed = v; return this; }
         public Task build() { return t; }
     }

@@ -1,0 +1,107 @@
+package com.flowlist.controller;
+
+import com.flowlist.dto.PushSubscriptionRequest;
+import com.flowlist.entity.PushSubscription;
+import com.flowlist.entity.User;
+import com.flowlist.repository.PushSubscriptionRepository;
+import com.flowlist.repository.UserRepository;
+import com.flowlist.service.PushNotificationService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/notifications")
+public class NotificationController {
+
+    private final PushSubscriptionRepository subRepo;
+    private final UserRepository userRepo;
+    private final PushNotificationService pushService;
+
+    public NotificationController(PushSubscriptionRepository subRepo,
+                                   UserRepository userRepo,
+                                   PushNotificationService pushService) {
+        this.subRepo = subRepo;
+        this.userRepo = userRepo;
+        this.pushService = pushService;
+    }
+
+    // ── Public: return VAPID public key so the browser can subscribe ──
+    @GetMapping("/vapid-public-key")
+    public ResponseEntity<Map<String, String>> getVapidPublicKey() {
+        return ResponseEntity.ok(Map.of("key", pushService.getVapidPublicKey()));
+    }
+
+    // ── Save / update a push subscription ──
+    @PostMapping("/subscribe")
+    public ResponseEntity<?> subscribe(@RequestBody PushSubscriptionRequest req,
+                                       @AuthenticationPrincipal UserDetails principal) {
+        User user = userRepo.findByEmail(principal.getUsername())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Optional<PushSubscription> existing = subRepo.findByEndpoint(req.getEndpoint());
+        PushSubscription sub = existing.orElse(new PushSubscription());
+        sub.setUser(user);
+        sub.setEndpoint(req.getEndpoint());
+        sub.setP256dh(req.getP256dh());
+        sub.setAuth(req.getAuth());
+        sub.setDueSoon(req.isDueSoon());
+        sub.setOverdueAlerts(req.isOverdueAlerts());
+        sub.setDailyDigest(req.isDailyDigest());
+
+        subRepo.save(sub);
+        return ResponseEntity.ok(Map.of("status", "subscribed"));
+    }
+
+    // ── Remove a push subscription ──
+    @DeleteMapping("/unsubscribe")
+    public ResponseEntity<?> unsubscribe(@RequestBody Map<String, String> body,
+                                         @AuthenticationPrincipal UserDetails principal) {
+        String endpoint = body.get("endpoint");
+        if (endpoint != null) subRepo.deleteByEndpoint(endpoint);
+        return ResponseEntity.ok(Map.of("status", "unsubscribed"));
+    }
+
+    // ── Send a test notification to the current user's subscriptions ──
+    @PostMapping("/test")
+    public ResponseEntity<?> sendTest(@AuthenticationPrincipal UserDetails principal) {
+        User user = userRepo.findByEmail(principal.getUsername())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        var subs = subRepo.findByUserId(user.getId());
+        if (subs.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No active subscriptions"));
+        }
+        for (PushSubscription sub : subs) {
+            pushService.sendNotification(sub,
+                "Drift notifications work!",
+                "You'll get reminders for due tasks, overdue alerts, and daily digests.",
+                "/",
+                "test"
+            );
+        }
+        return ResponseEntity.ok(Map.of("status", "sent", "count", subs.size()));
+    }
+
+    // ── Get current subscription status ──
+    @GetMapping("/status")
+    public ResponseEntity<?> getStatus(@AuthenticationPrincipal UserDetails principal) {
+        User user = userRepo.findByEmail(principal.getUsername())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        var subs = subRepo.findByUserId(user.getId());
+        if (subs.isEmpty()) {
+            return ResponseEntity.ok(Map.of("subscribed", false));
+        }
+        PushSubscription sub = subs.get(0);
+        return ResponseEntity.ok(Map.of(
+            "subscribed",     true,
+            "dueSoon",        sub.isDueSoon(),
+            "overdueAlerts",  sub.isOverdueAlerts(),
+            "dailyDigest",    sub.isDailyDigest()
+        ));
+    }
+}

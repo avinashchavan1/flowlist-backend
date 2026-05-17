@@ -1,0 +1,42 @@
+# Render Blueprint — one-click deploy spec
+# Dashboard: New → Blueprint → connect this repo → Render auto-reads this file.
+# Free plan: 750h/mo, spins down after 15 min idle, ~30-60s cold start.
+# Mitigate cold start with a free UptimeRobot HTTP ping to /api/health every 14 min.
+
+services:
+  - type: web
+    name: flowlist-api
+    runtime: docker
+    region: oregon              # Pick closest to Neon (or change to "ohio" for us-east-1 latency)
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true            # Auto-build on every push to main
+    envVars:
+      # ── Secrets: set manually in Render dashboard (Environment tab) ──
+      - key: DATABASE_URL
+        sync: false             # jdbc:postgresql://<host>/<db>?sslmode=require
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false             # ≥32 char random string
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false             # optional, for password reset emails
+
+      # ── Non-secret config: baked into blueprint ──
+      - key: VAPID_SUBJECT
+        value: mailto:admin@drift.app
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://flowlist-app.netlify.app,http://localhost:5173
+      - key: APP_BASE_URL
+        value: https://flowlist-app.netlify.app
+      - key: JWT_EXPIRATION_DAYS
+        value: "30"
+      - key: LOG_LEVEL
+        value: INFO

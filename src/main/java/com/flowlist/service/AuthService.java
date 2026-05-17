@@ -5,14 +5,20 @@ import com.flowlist.entity.PasswordResetToken;
 import com.flowlist.entity.User;
 import com.flowlist.repository.PasswordResetTokenRepository;
 import com.flowlist.repository.UserRepository;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -24,16 +30,19 @@ public class AuthService {
     private final AuthenticationManager authManager;
     private final PasswordResetTokenRepository resetTokenRepository;
     private final EmailService emailService;
+    private final RestTemplate restTemplate;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        JwtService jwtService, AuthenticationManager authManager,
-                       PasswordResetTokenRepository resetTokenRepository, EmailService emailService) {
+                       PasswordResetTokenRepository resetTokenRepository, EmailService emailService,
+                       RestTemplate restTemplate) {
         this.userRepository      = userRepository;
         this.passwordEncoder     = passwordEncoder;
         this.jwtService          = jwtService;
         this.authManager         = authManager;
         this.resetTokenRepository = resetTokenRepository;
         this.emailService        = emailService;
+        this.restTemplate        = restTemplate;
     }
 
     public AuthResponse register(RegisterRequest req) {
@@ -73,13 +82,19 @@ public class AuthService {
 
     // Always returns success — never leak whether an email exists
     public void forgotPassword(String email) {
-        resetTokenRepository.deleteExpired(Instant.now());
         userRepository.findByEmail(email.toLowerCase()).ifPresent(user -> {
             String token = UUID.randomUUID().toString();
             Instant expires = Instant.now().plus(1, ChronoUnit.HOURS);
             resetTokenRepository.save(new PasswordResetToken(token, user.getEmail(), expires));
             emailService.sendPasswordReset(user.getEmail(), token);
         });
+    }
+
+    // Cleanup expired reset tokens hourly — moved off forgotPassword path to avoid DoS vector
+    @Scheduled(fixedRate = 3_600_000)
+    @Transactional
+    public void cleanupExpiredResetTokens() {
+        resetTokenRepository.deleteExpired(Instant.now());
     }
 
     @Transactional
@@ -95,6 +110,41 @@ public class AuthService {
         userRepository.save(user);
         prt.setUsed(true);
         resetTokenRepository.save(prt);
+    }
+
+    public AuthResponse googleLogin(String accessToken) {
+        String url = "https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + accessToken;
+        Map<String, Object> info;
+        try {
+            info = restTemplate.exchange(url, HttpMethod.GET, null,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}).getBody();
+        } catch (HttpClientErrorException e) {
+            throw new BadCredentialsException("Invalid Google token");
+        }
+        if (info == null || !Boolean.TRUE.equals(info.get("email_verified"))) {
+            throw new BadCredentialsException("Google account email not verified");
+        }
+        String email    = ((String) info.get("email")).toLowerCase();
+        String name     = (String) info.get("name");
+        String googleId = (String) info.get("sub");
+
+        User user = userRepository.findByEmail(email).orElseGet(() -> {
+            // New user via Google — store a random unknown password
+            return userRepository.save(User.builder()
+                    .email(email)
+                    .name(name)
+                    .googleId(googleId)
+                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .build());
+        });
+
+        // Update googleId if this is an existing email/password account linking Google for the first time
+        if (user.getGoogleId() == null) {
+            user.setGoogleId(googleId);
+            userRepository.save(user);
+        }
+
+        return buildResponse(user);
     }
 
     private AuthResponse buildResponse(User user) {

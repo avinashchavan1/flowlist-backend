@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowlist.entity.PushSubscription;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
+import org.apache.http.HttpResponse;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +49,12 @@ public class PushNotificationService {
         return vapidPublicKey;
     }
 
-    public void sendNotification(PushSubscription sub, String title, String body, String url, String type) {
-        if (pushService == null) return;
+    /**
+     * Sends a push notification.
+     * @return true if sent successfully, false if the subscription is invalid/expired
+     */
+    public boolean sendNotification(PushSubscription sub, String title, String body, String url, String type) {
+        if (pushService == null) return false;
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("title", title);
@@ -68,9 +73,19 @@ public class PushNotificationService {
                 json.getBytes()
             );
 
-            pushService.send(notification);
+            HttpResponse response = pushService.send(notification);
+            int statusCode = response.getStatusLine().getStatusCode();
+            if (statusCode >= 200 && statusCode < 300) {
+                log.debug("Push sent to {} — status {}", sub.getEndpoint(), statusCode);
+                return true;
+            } else {
+                log.warn("Push rejected for {} — FCM status {}: {}", sub.getEndpoint(), statusCode,
+                    response.getStatusLine().getReasonPhrase());
+                return false;
+            }
         } catch (Exception e) {
-            log.warn("Failed to send push to {}: {}", sub.getEndpoint(), e.getMessage());
+            log.warn("Failed to send push to {} — {}", sub.getEndpoint(), e.getMessage());
+            return false;
         }
     }
 }

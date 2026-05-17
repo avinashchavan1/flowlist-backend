@@ -13,3 +13,6 @@ target/
 
 # OS
 .DS_Store
+
+# Netlify (frontend tool, accidentally created here)
+.netlify/

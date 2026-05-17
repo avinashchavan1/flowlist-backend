@@ -27,10 +27,9 @@ public class TaskController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public TaskResponse create(@AuthenticationPrincipal UserDetails u,
-                               @Valid @RequestBody TaskRequest req) {
-        return taskService.create(u.getUsername(), req);
+    public ResponseEntity<List<TaskResponse>> create(@AuthenticationPrincipal UserDetails u,
+                                                     @Valid @RequestBody TaskRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.create(u.getUsername(), req));
     }
 
     @PutMapping("/{id}")

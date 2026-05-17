@@ -41,7 +41,7 @@ public class NotificationController {
     public ResponseEntity<?> subscribe(@RequestBody PushSubscriptionRequest req,
                                        @AuthenticationPrincipal UserDetails principal) {
         User user = userRepo.findByEmail(principal.getUsername())
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
 
         Optional<PushSubscription> existing = subRepo.findByEndpoint(req.getEndpoint());
         PushSubscription sub = existing.orElse(new PushSubscription());
@@ -59,10 +59,22 @@ public class NotificationController {
 
     // ── Remove a push subscription ──
     @DeleteMapping("/unsubscribe")
-    public ResponseEntity<?> unsubscribe(@RequestBody Map<String, String> body,
+    public ResponseEntity<?> unsubscribe(@RequestBody(required = false) Map<String, String> body,
                                          @AuthenticationPrincipal UserDetails principal) {
-        String endpoint = body.get("endpoint");
-        if (endpoint != null) subRepo.deleteByEndpoint(endpoint);
+        User user = userRepo.findByEmail(principal.getUsername())
+            .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
+        String endpoint = body != null ? body.get("endpoint") : null;
+        if (endpoint != null && !endpoint.isBlank()) {
+            // Ownership check — only delete if endpoint belongs to this user (prevents IDOR)
+            subRepo.findByEndpoint(endpoint).ifPresent(sub -> {
+                if (sub.getUser() != null && sub.getUser().getId().equals(user.getId())) {
+                    subRepo.deleteByEndpoint(endpoint);
+                }
+            });
+        } else {
+            // No endpoint provided — delete all subscriptions for this user
+            subRepo.findByUserId(user.getId()).forEach(subRepo::delete);
+        }
         return ResponseEntity.ok(Map.of("status", "unsubscribed"));
     }
 
@@ -70,28 +82,38 @@ public class NotificationController {
     @PostMapping("/test")
     public ResponseEntity<?> sendTest(@AuthenticationPrincipal UserDetails principal) {
         User user = userRepo.findByEmail(principal.getUsername())
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
 
         var subs = subRepo.findByUserId(user.getId());
         if (subs.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "No active subscriptions"));
         }
+        int sent = 0;
         for (PushSubscription sub : subs) {
-            pushService.sendNotification(sub,
+            boolean ok = pushService.sendNotification(sub,
                 "Drift notifications work!",
                 "You'll get reminders for due tasks, overdue alerts, and daily digests.",
                 "/",
                 "test"
             );
+            if (ok) {
+                sent++;
+            } else {
+                // Invalid subscription — remove it so user can re-subscribe
+                subRepo.deleteByEndpoint(sub.getEndpoint());
+            }
         }
-        return ResponseEntity.ok(Map.of("status", "sent", "count", subs.size()));
+        if (sent == 0) {
+            return ResponseEntity.badRequest().body(Map.of("error", "All subscriptions were invalid and have been removed. Please re-enable notifications."));
+        }
+        return ResponseEntity.ok(Map.of("status", "sent", "count", sent));
     }
 
     // ── Get current subscription status ──
     @GetMapping("/status")
     public ResponseEntity<?> getStatus(@AuthenticationPrincipal UserDetails principal) {
         User user = userRepo.findByEmail(principal.getUsername())
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
         var subs = subRepo.findByUserId(user.getId());
         if (subs.isEmpty()) {
             return ResponseEntity.ok(Map.of("subscribed", false));

@@ -11,6 +11,9 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     // All tasks for a user, newest first
     List<Task> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // Active (incomplete) tasks for a user — used by NotificationScheduler to skip done tasks at DB level
+    List<Task> findByUserIdAndCompletedFalse(Long userId);
+
     // Safety check before mutating
     Optional<Task> findByIdAndUserId(String id, Long userId);
 

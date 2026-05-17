@@ -37,8 +37,8 @@ dependencies {
     // JSON (for Resend API payload serialisation)
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-    // MySQL
-    runtimeOnly 'com.mysql:mysql-connector-j'
+    // PostgreSQL (Neon)
+    runtimeOnly 'org.postgresql:postgresql:42.7.4'
 
     // JWT
     implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"

@@ -1,0 +1,27 @@
+name: Keep Render alive
+
+# Render free tier spins down a web service after 15 min idle (~30-60s cold start
+# on next hit). This workflow pings /api/health every 10 min so the service never
+# goes idle. GitHub-scheduled crons can be delayed up to ~5 min under load, so
+# 10-min cadence stays safely under Render's 15-min idle threshold.
+#
+# Cost: GitHub Actions free tier is unlimited minutes for public repos. Each ping
+# uses ~5 seconds of runner time.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:  # manual trigger from Actions tab if needed
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping health endpoint
+        run: |
+          set -e
+          URL="https://flowlist-api-2kj8.onrender.com/api/health"
+          # -f: fail on non-2xx, --retry: handle cold-start timeout, --max-time per attempt
+          curl -fsS --retry 3 --retry-delay 5 --max-time 90 "$URL"
+          echo "Pinged $URL OK"

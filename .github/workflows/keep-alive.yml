@@ -10,7 +10,7 @@ name: Keep Render alive
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # 5-min cadence — GH Actions minimum; bump to */10 once verified
+    - cron: '*/10 * * * *'  # every 10 min — safe under Render's 15-min spin-down
   workflow_dispatch:  # manual trigger from Actions tab if needed
 
 jobs:

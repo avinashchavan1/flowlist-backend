@@ -9,9 +9,10 @@ name: Keep Render alive
 # uses ~5 seconds of runner time.
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'  # every 10 min — safe under Render's 15-min spin-down
-  workflow_dispatch:  # manual trigger from Actions tab if needed
+  # NOTE: GH free-tier scheduled workflows are unreliable — actual gaps observed were
+  # 80-260 min vs the configured 10 min, causing Render to spin down between runs.
+  # Keep-alive is now handled by cron-job.org. Workflow kept for manual dispatch only.
+  workflow_dispatch:
 
 jobs:
   ping:

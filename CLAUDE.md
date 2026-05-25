@@ -4,6 +4,35 @@ This file is read automatically by Claude Code at the start of every session.
 
 ---
 
+## ⛔ PRODUCTION SAFETY — READ FIRST, NON-NEGOTIABLE
+
+This app has REAL users with REAL data on a live Supabase Postgres. Treat every
+change as production. Breaking prod is the worst outcome — worse than a slow fix.
+
+**Database rules:**
+- **NEVER rename a `@Table` / `@Column` on a live DB.** Hibernate `ddl-auto=update`
+  does NOT rename — it CREATES a new empty table/column and ORPHANS all existing
+  data. This already caused a full lockout once (table prefix rename → empty tables
+  → every user logged out). If a rename is truly needed: write an explicit SQL
+  migration (`ALTER TABLE ... RENAME`), run it on the DB FIRST, then change the entity.
+- **Before ANY schema change or data migration on prod: take a backup** (dump the
+  affected tables) and **confirm the plan with the user**.
+- **Never `TRUNCATE`/`DROP`/`DELETE` on prod tables** without an explicit, in-chat
+  user OK for that specific operation. Prefer `INSERT … SELECT` (non-destructive).
+- Schema changes go live the moment they deploy (Render auto-builds on push +
+  `ddl-auto=update` runs on boot). There is no staging. Double-check entity edits.
+- DB connection: Supabase pooler `aws-1-ap-south-1.pooler.supabase.com:5432`,
+  user `postgres.<ref>`. Use `psql` (libpq) to inspect/back up before touching data.
+
+**Deploy rules:**
+- Backend auto-deploys on push to `main` (Render, Dockerfile). Verify the build
+  compiles + smoke-test a live endpoint after every push.
+- Don't change `@Table` names, auth/JWT secret, or DB URL casually — they lock users out.
+
+When unsure whether something is destructive: STOP and ask.
+
+---
+
 ## Keep Frontend PROJECT.md in Sync
 
 The canonical project documentation lives at:

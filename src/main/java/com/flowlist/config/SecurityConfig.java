@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/auth/google").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/health").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/notifications/vapid-public-key").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/api/widget/data/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authProvider())

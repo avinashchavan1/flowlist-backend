@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "flowlist_password_reset_tokens")
 public class PasswordResetToken {
 
     @Id

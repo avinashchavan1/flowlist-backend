@@ -5,11 +5,11 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "tasks", indexes = {
-    @Index(name = "idx_task_user",                columnList = "user_id"),
-    @Index(name = "idx_task_due",                 columnList = "due_date"),
+@Table(name = "flowlist_tasks", indexes = {
+    @Index(name = "idx_flowlist_task_user",                columnList = "user_id"),
+    @Index(name = "idx_flowlist_task_due",                 columnList = "due_date"),
     // Composite index covers scheduler queries: per-user filter on completed + due_date range
-    @Index(name = "idx_task_user_completed_due",  columnList = "user_id, completed, due_date")
+    @Index(name = "idx_flowlist_task_user_completed_due",  columnList = "user_id, completed, due_date")
 })
 public class Task {
 

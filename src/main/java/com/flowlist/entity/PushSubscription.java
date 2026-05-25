@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "push_subscriptions")
+@Table(name = "flowlist_push_subscriptions")
 public class PushSubscription {
 
     @Id

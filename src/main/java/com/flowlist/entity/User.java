@@ -6,7 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "users")
+@Table(name = "flowlist_users")
 public class User {
 
     @Id
@@ -25,6 +25,10 @@ public class User {
     @Column(name = "google_id", length = 255)
     private String googleId;
 
+    // Long-lived, read-only key for the iOS/Scriptable widget (no JWT needed).
+    @Column(name = "widget_key", unique = true, length = 64)
+    private String widgetKey;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
@@ -38,6 +42,8 @@ public class User {
     public Instant getCreatedAt() { return createdAt; }
 
     public String getGoogleId()                  { return googleId; }
+    public String getWidgetKey()                 { return widgetKey; }
+    public void setWidgetKey(String k)           { this.widgetKey = k; }
     public void setId(Long id)               { this.id = id; }
     public void setEmail(String email)       { this.email = email; }
     public void setPassword(String password) { this.password = password; }

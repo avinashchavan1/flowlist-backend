@@ -71,19 +71,28 @@ public class NotificationScheduler {
         for (PushSubscription sub : subs) {
             Long userId = sub.getUser().getId();
             List<Task> tasks = taskRepo.findByUserIdAndCompletedFalse(userId);
-            long overdueCount = tasks.stream()
+            List<Task> overdue = tasks.stream()
                 .filter(t -> !t.isCompleted()
                     && t.getDueDate() != null
                     && t.getDueDate().isBefore(now))
-                .count();
+                .sorted(java.util.Comparator.comparing(Task::getDueDate))
+                .toList();
 
-            if (overdueCount > 0) {
-                String body = overdueCount == 1
-                    ? "1 task is overdue"
-                    : overdueCount + " tasks are overdue";
+            if (!overdue.isEmpty()) {
+                int n = overdue.size();
+                // List up to 4 titles; summarise the rest. Keeps the body readable in a push.
+                int show = Math.min(n, 4);
+                StringBuilder body = new StringBuilder();
+                for (int i = 0; i < show; i++) {
+                    body.append("• ").append(overdue.get(i).getTitle());
+                    if (i < show - 1) body.append("\n");
+                }
+                if (n > show) body.append("\n+ ").append(n - show).append(" more");
+
+                String title = n == 1 ? "1 task overdue" : n + " tasks overdue";
                 boolean ok = pushService.sendNotification(sub,
-                    "Overdue tasks",
-                    body,
+                    title,
+                    body.toString(),
                     "/",
                     "overdue"
                 );

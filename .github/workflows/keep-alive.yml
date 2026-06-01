@@ -9,9 +9,12 @@ name: Keep Render alive
 # uses ~5 seconds of runner time.
 
 on:
-  # NOTE: GH free-tier scheduled workflows are unreliable — actual gaps observed were
-  # 80-260 min vs the configured 10 min, causing Render to spin down between runs.
-  # Keep-alive is now handled by cron-job.org. Workflow kept for manual dispatch only.
+  # SECONDARY keep-alive. Primary is cron-job.org (reliable 5-min). GH free-tier
+  # crons have observed 80-260 min gaps so this is only a redundant safety net —
+  # kicks in if cron-job.org auto-deletes the job (happened once during a Render
+  # cold-start failure cascade). 20-min cadence is fine as a backup.
+  schedule:
+    - cron: '*/20 * * * *'
   workflow_dispatch:
 
 jobs:

@@ -9,24 +9,23 @@ name: Keep Render alive
 # uses ~5 seconds of runner time.
 
 on:
-  # SECONDARY keep-alive. Primary is cron-job.org (reliable 5-min). GH free-tier
-  # crons have observed 80-260 min gaps so this is only a redundant safety net —
-  # kicks in if cron-job.org auto-deletes the job (happened once during a Render
-  # cold-start failure cascade). 20-min cadence is fine as a backup.
+  # DAYTIME-ONLY keep-alive backup. Render free = 750 instance-hours/month; pinging
+  # 24/7 burns the whole quota → billing suspension (this happened once). So we keep
+  # the backend warm only during active hours (UTC 1-17 ≈ 6:30am-10:30pm IST),
+  # letting it spin down overnight. ~16h/day ≈ 480h/month, safely under 750.
+  # Primary pinger is cron-job.org (same daytime window). This GH job is the backup.
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/20 1-17 * * *'
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    # 5 min is enough for one cold-start (~60s) + 1 retry; previous 2 min caused mid-cleanup cancellation
     timeout-minutes: 5
     steps:
       - name: Ping health endpoint
         run: |
           set -e
-          URL="https://flowlist-api-2kj8.onrender.com/api/health"
-          # Render cold start typically <60s. Allow 2 retries with 3s gap.
+          URL="https://flowlist-api-g6c3.onrender.com/api/health"
           curl -fsS --retry 2 --retry-delay 3 --max-time 75 "$URL"
           echo "Pinged $URL OK"

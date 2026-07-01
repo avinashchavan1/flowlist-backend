@@ -11,11 +11,12 @@ name: Keep Render alive
 on:
   # DAYTIME-ONLY keep-alive backup. Render free = 750 instance-hours/month; pinging
   # 24/7 burns the whole quota → billing suspension (this happened once). So we keep
-  # the backend warm only during active hours (UTC 1-17 ≈ 6:30am-10:30pm IST),
-  # letting it spin down overnight. ~16h/day ≈ 480h/month, safely under 750.
-  # Primary pinger is cron-job.org (same daytime window). This GH job is the backup.
+  # the backend warm only during the user's active window and let it sleep overnight.
+  # Active: IST 8am-12am (midnight) = UTC 2-18. Sleep: IST 12am-8am = UTC 19-1.
+  # ~17h/day ≈ 510h/month, safely under 750. Primary pinger is cron-job.org (same
+  # window); this GH job is the redundant backup.
   schedule:
-    - cron: '*/20 1-17 * * *'
+    - cron: '*/20 2-18 * * *'
   workflow_dispatch:
 
 jobs:

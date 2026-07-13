@@ -16,7 +16,7 @@ on:
   # ~17h/day ≈ 510h/month, safely under 750. Primary pinger is cron-job.org (same
   # window); this GH job is the redundant backup.
   schedule:
-    - cron: '*/20 2-18 * * *'
+    - cron: '*/10 2-18 * * *'
   workflow_dispatch:
 
 jobs:
